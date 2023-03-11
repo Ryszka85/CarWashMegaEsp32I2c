@@ -19,14 +19,20 @@ struct PS4Controller {
   int8_t  lStickY;
   uint8_t r1;
   uint8_t r2;
+  uint8_t l1;
+  uint8_t l2;
   bool cross;
   bool circle;
+  bool isPs4Connected;
 };
 
 
 Adafruit_MotorShield AFMS_TOP(0x63); 
 Adafruit_DCMotor *frontMotor = AFMS_TOP.getMotor(1);
 Adafruit_DCMotor *frontBrush = AFMS_TOP.getMotor(2);
+
+Adafruit_DCMotor *groundMotor1 = AFMS_TOP.getMotor(3);
+Adafruit_DCMotor *groundMotor2 = AFMS_TOP.getMotor(4);
 
 Adafruit_MotorShield AFMS(0x60); 
 Adafruit_DCMotor *leftMotor = AFMS.getMotor(1);
@@ -51,6 +57,8 @@ void setup() {
   rightBrush->setSpeed(255);
   frontMotor->setSpeed(110);
   frontBrush->setSpeed(255);
+  groundMotor1->setSpeed(255);
+  groundMotor2->setSpeed(255);
   
   pinMode(LEFT_MOTOR_RIGHT_LIMIT, INPUT_PULLUP);
   pinMode(LEFT_MOTOR_LEFT_LIMIT, INPUT_PULLUP);
@@ -62,22 +70,20 @@ void setup() {
 
 void loop() {
   PS4Controller controllerData;
+  controllerData.isPs4Connected = false;
   Wire.requestFrom(I2C_ADDRESS, sizeof(controllerData));
 
   while (Wire.available() < sizeof(controllerData)) {
     // Wait for data to become available
-  }
+  }  
 
   Wire.readBytes(reinterpret_cast<uint8_t*>(&controllerData), sizeof(controllerData));
-  
-  handleBackMotors(controllerData);
 
-  handleFrontMotors(controllerData);
-
-  debug(controllerData.lStickY);
-
+  if(controllerData.isPs4Connected) {
+    handleBackMotors(controllerData);
+    handleFrontMotors(controllerData);      
+  }    
   delay(100);
-
 }
 
 void handleFrontMotors(PS4Controller ps4) {
@@ -87,6 +93,19 @@ void handleFrontMotors(PS4Controller ps4) {
     frontMotor->run(BACKWARD);
   } else {
     frontMotor->run(RELEASE);
+  }
+
+  if(ps4.l1) {
+    debug("forward");
+    groundMotor1->run(FORWARD);
+    groundMotor2->run(FORWARD);
+  } else if (ps4.l2) {
+    debug("backward");
+    groundMotor1->run(BACKWARD);
+    groundMotor2->run(BACKWARD);
+  } else {
+    groundMotor1->run(RELEASE);
+    groundMotor2->run(RELEASE);
   }
 
   if(ps4.circle) { frontBrush->run(FORWARD); } 
